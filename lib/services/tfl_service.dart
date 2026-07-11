@@ -17,6 +17,9 @@ class TflService {
               baseUrl: ApiConfig.tflBaseUrl,
               connectTimeout: const Duration(seconds: 25),
               receiveTimeout: const Duration(seconds: 40),
+              // TfL returns HTTP 300 (Multiple Choices) for ambiguous locations;
+              // accept it so we can resolve the disambiguation ourselves.
+              validateStatus: (s) => s != null && s < 400,
             ));
 
   final Dio _dio;
@@ -46,11 +49,41 @@ class TflService {
       q['time'] = _hhmm(when);
       q['timeIs'] = arriveBy ? 'arriving' : 'departing';
     }
-    final res = await _get('/Journey/JourneyResults/$from/to/$to', q);
-    final journeys = (res.data['journeys'] as List? ?? const []);
+    var res = await _get('/Journey/JourneyResults/$from/to/$to', q);
+    var data = res.data;
+
+    // If TfL couldn't uniquely resolve an endpoint it returns HTTP 300 with
+    // disambiguation candidates instead of journeys. Resolve each ambiguous end
+    // to its top-ranked candidate's coordinates and retry once.
+    if (data is Map && data['journeys'] == null) {
+      final resolvedTo = _topDisambiguation(data['toLocationDisambiguation']) ?? to;
+      final resolvedFrom = _topDisambiguation(data['fromLocationDisambiguation']) ?? from;
+      if (resolvedTo != to || resolvedFrom != from) {
+        res = await _get('/Journey/JourneyResults/$resolvedFrom/to/$resolvedTo', q);
+        data = res.data;
+      }
+    }
+
+    final journeys = (data is Map ? data['journeys'] as List? : null) ?? const [];
     return [
       for (final j in journeys) Journey.fromJson(Map<String, dynamic>.from(j)),
     ];
+  }
+
+  /// Extracts the best candidate's "lat,lon" from a TfL disambiguation block,
+  /// preferring higher match quality. Returns null if none is usable.
+  String? _topDisambiguation(dynamic disambiguation) {
+    if (disambiguation is! Map) return null;
+    final options = disambiguation['disambiguationOptions'] as List?;
+    if (options == null || options.isEmpty) return null;
+    // Options come back ranked; take the first with coordinates.
+    for (final o in options) {
+      final place = (o is Map) ? o['place'] : null;
+      final lat = (place is Map ? place['lat'] as num? : null)?.toDouble();
+      final lon = (place is Map ? place['lon'] as num? : null)?.toDouble();
+      if (lat != null && lon != null) return '$lat,$lon';
+    }
+    return null;
   }
 
   /// StopPoints within [radius] metres of a coordinate, nearest first.

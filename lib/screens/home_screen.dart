@@ -114,7 +114,10 @@ class HomeScreen extends ConsumerWidget {
       builder: (_) => const DestinationSearchSheet(),
     );
     if (stop != null) {
-      ref.read(searchProvider.notifier).setTo(stop.id, label: stop.name);
+      // Use coordinates as the destination — TfL Journey Planner resolves these
+      // directly and never returns an HTTP 300 disambiguation for them.
+      final coord = '${stop.position.latitude},${stop.position.longitude}';
+      ref.read(searchProvider.notifier).setTo(coord, label: stop.name);
       if (context.mounted) context.push('/results');
     }
   }
