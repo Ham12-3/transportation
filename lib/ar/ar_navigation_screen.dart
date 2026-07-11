@@ -105,6 +105,24 @@ class _ARNavigationScreenState extends State<ARNavigationScreen>
     );
   }
 
+  /// Full-bleed camera preview that covers the screen without distortion.
+  Widget _cameraLayer(BuildContext context) {
+    final cam = _camera;
+    if (cam == null || !cam.value.isInitialized) {
+      return const ColoredBox(color: Colors.black);
+    }
+    final media = MediaQuery.of(context).size;
+    var scale = media.aspectRatio * cam.value.aspectRatio;
+    if (scale < 1) scale = 1 / scale;
+    return ClipRect(
+      child: Transform.scale(
+        scale: scale,
+        alignment: Alignment.center,
+        child: Center(child: CameraPreview(cam)),
+      ),
+    );
+  }
+
   Widget _buildAr(BuildContext context) {
     return AnimatedBuilder(
       animation: Listenable.merge([_nav, _pulse]),
@@ -113,16 +131,21 @@ class _ARNavigationScreenState extends State<ARNavigationScreen>
         return Stack(
           fit: StackFit.expand,
           children: [
-            // Camera feed
-            if (_camera != null)
-              FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _camera!.value.previewSize?.height ?? 1080,
-                  height: _camera!.value.previewSize?.width ?? 1920,
-                  child: CameraPreview(_camera!),
+            // Full-bleed camera feed
+            _cameraLayer(context),
+
+            // Depth scrim: darken top & bottom so overlays read clearly and the
+            // scene gains a sense of horizon depth.
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x66000000), Color(0x00000000), Color(0x00000000), Color(0x59000000)],
+                  stops: [0.0, 0.28, 0.68, 1.0],
                 ),
               ),
+            ),
 
             // AR path chevrons
             CustomPaint(
@@ -133,15 +156,17 @@ class _ARNavigationScreenState extends State<ARNavigationScreen>
               ),
             ),
 
-            // Destination bearing marker near the horizon
+            // Destination bearing marker floating near the horizon
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.34,
+              top: MediaQuery.of(context).size.height * 0.42,
               left: 0,
               right: 0,
               child: Center(
                 child: DestinationBearingBadge(
                   relativeAngle: _nav.relativeAngle,
-                  label: '${_nav.remainingMeters.round()} m',
+                  label: _nav.remainingMeters >= 1000
+                      ? '${(_nav.remainingMeters / 1000).toStringAsFixed(1)} km'
+                      : '${_nav.remainingMeters.round()} m',
                 ),
               ),
             ),

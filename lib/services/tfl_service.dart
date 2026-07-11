@@ -15,8 +15,8 @@ class TflService {
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: ApiConfig.tflBaseUrl,
-              connectTimeout: const Duration(seconds: 12),
-              receiveTimeout: const Duration(seconds: 15),
+              connectTimeout: const Duration(seconds: 25),
+              receiveTimeout: const Duration(seconds: 40),
             ));
 
   final Dio _dio;

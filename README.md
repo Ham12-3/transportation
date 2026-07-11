@@ -22,9 +22,10 @@ Captured live on an Android device — real Transport for London data.
 | ![Air fleet](screenshots/06-air-fleet.png) | ![Saved](screenshots/05-saved.png) | |
 
 > Results, Nearby, Search and Route detail show **live TfL Journey Planner / StopPoint / arrivals** data.
-> The AR screen renders real path chevrons + turn cards over the camera feed (the coloured blocks are the
-> Android emulator's synthetic camera — a physical device shows the real street). The Air Fleet feed uses
-> OpenSky, whose anonymous tier is rate-limited (hence the "offline" state here — add credentials for live aircraft).
+> The AR image is a render of the overlay itself — a **ground-anchored perspective route ribbon** with a
+> soft glow, bright edges and forward-flowing chevrons that bend toward the next turn — drawn over the live
+> camera on a real device (the emulator has no real camera). The Air Fleet feed uses OpenSky, whose anonymous
+> tier is rate-limited (hence the "offline" state here — add credentials for live aircraft).
 
 ---
 
