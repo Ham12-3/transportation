@@ -1,0 +1,9 @@
+{
+  "_comment": "Leave keys empty to use anonymous access (TfL works key-less; OpenSky works anonymously). Fill in real values to raise rate limits. Do NOT leave placeholder text in these fields — an INVALID TfL key is rejected with HTTP 429.",
+  "TFL_APP_KEY": "",
+  "TFL_APP_ID": "",
+  "OPENSKY_USER": "",
+  "OPENSKY_PASS": "",
+  "AIR_FLEET_URL": "",
+  "AIR_FLEET_KEY": ""
+}
