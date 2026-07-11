@@ -9,6 +9,25 @@ map. Built to match the *Tube · London Transit* design system — blue-forward 
 
 ---
 
+## Screenshots
+
+Captured live on an Android device — real Transport for London data.
+
+| Home (search) | Route results | Route detail |
+|:---:|:---:|:---:|
+| ![Home](screenshots/01-home.png) | ![Results](screenshots/03-results.png) | ![Route detail](screenshots/04-route-detail.png) |
+| **Live search** | **Nearby stops & lines** | **AR navigation** |
+| ![Search](screenshots/08-search.png) | ![Nearby](screenshots/02-nearby.png) | ![AR navigation](screenshots/07-ar-navigation.png) |
+| **Air fleet** | **Saved** | |
+| ![Air fleet](screenshots/06-air-fleet.png) | ![Saved](screenshots/05-saved.png) | |
+
+> Results, Nearby, Search and Route detail show **live TfL Journey Planner / StopPoint / arrivals** data.
+> The AR screen renders real path chevrons + turn cards over the camera feed (the coloured blocks are the
+> Android emulator's synthetic camera — a physical device shows the real street). The Air Fleet feed uses
+> OpenSky, whose anonymous tier is rate-limited (hence the "offline" state here — add credentials for live aircraft).
+
+---
+
 ## Features
 
 | # | Screen | What it does |
