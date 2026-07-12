@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/journey.dart';
-import '../models/transport_mode.dart';
 import '../theme/app_colors.dart';
 import 'chips.dart';
 import 'common.dart';
@@ -25,7 +24,7 @@ class RouteCard extends StatelessWidget {
             children: [
               ...journey.lineBadges.take(4).map((b) => Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: LineBadge(b, background: _badgeColor(b, journey)),
+                    child: LineBadge.line(b),
                   )),
               const Spacer(),
               if (journey.fareLabel != null && journey.fareLabel != 'FREE')
@@ -54,14 +53,4 @@ class RouteCard extends StatelessWidget {
     );
   }
 
-  Color _badgeColor(String badge, Journey j) {
-    // Tube/rail line legs render blue; buses render slate — mirror the design.
-    final leg = j.legs.firstWhere(
-      (l) => (l.lineName ?? l.mode.label) == badge,
-      orElse: () => j.legs.first,
-    );
-    return leg.mode == TransportMode.tube || leg.mode == TransportMode.tram
-        ? AppColors.primary
-        : AppColors.modeSlate;
-  }
 }

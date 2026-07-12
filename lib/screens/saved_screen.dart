@@ -24,13 +24,12 @@ class SavedScreen extends ConsumerWidget {
           Container(
             padding: EdgeInsets.fromLTRB(20, top + 16, 20, 16),
             alignment: Alignment.centerLeft,
-            child: const Text('Saved',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.ink, letterSpacing: -0.5)),
+            child: Text('Saved', style: Theme.of(context).textTheme.displaySmall),
           ),
           Expanded(
             child: items.isEmpty
                 ? const MessageView(
-                    icon: Icons.star_outline_rounded,
+                    brandMark: true,
                     title: 'Nothing saved yet',
                     message: 'Star a route or stop to keep it here for quick access.')
                 : ListView.separated(

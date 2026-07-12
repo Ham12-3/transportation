@@ -47,9 +47,9 @@ class AppShadows {
     BoxShadow(color: Color(0x2E141B26), blurRadius: 18, offset: Offset(0, 6)),
   ];
 
-  /// Blue button glow: 0 6px 16px rgba(26,111,235,.32)
+  /// Blue button glow: corporate blue at ~28% for selected/CTA lift.
   static const List<BoxShadow> blueGlow = [
-    BoxShadow(color: Color(0x521A6FEB), blurRadius: 16, offset: Offset(0, 6)),
+    BoxShadow(color: Color(0x470019A8), blurRadius: 16, offset: Offset(0, 6)),
   ];
 
   /// Bottom sheet lift: 0 -12px 34px rgba(20,27,38,.18)

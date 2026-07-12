@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../models/journey.dart';
+import '../models/journey_plan.dart';
 import '../models/transport_mode.dart';
 import '../providers/providers.dart';
 import '../theme/app_colors.dart';
@@ -26,7 +27,7 @@ final _compareProvider = FutureProvider.autoDispose<Map<TransportMode, Journey?>
   Future<Journey?> one(TransportMode m) async {
     try {
       final r = await tfl.planJourney(from: from, to: q.to, modes: [m]);
-      return r.isEmpty ? null : r.first;
+      return r.journeys.isEmpty ? null : r.journeys.first;
     } catch (_) {
       return null;
     }
@@ -62,9 +63,27 @@ class ResultsScreen extends ConsumerWidget {
               loading: () => const LoadingView(label: 'Planning your journey…'),
               error: (e, _) => ErrorView(
                 message: 'Journey planning failed. Check your destination and try again.',
+                detail: e,
                 onRetry: () => ref.invalidate(journeyProvider),
               ),
-              data: (list) {
+              data: (result) {
+                // TfL returned several possible locations — let the user choose.
+                if (result.needsChoice) {
+                  return _LocationChooser(
+                    options: result.options,
+                    end: result.ambiguousEnd ?? AmbiguousEnd.destination,
+                    onPick: (opt) {
+                      final notifier = ref.read(searchProvider.notifier);
+                      if (result.ambiguousEnd == AmbiguousEnd.origin) {
+                        notifier.setFrom(opt.coord, label: opt.name);
+                      } else {
+                        notifier.setTo(opt.coord, label: opt.name);
+                      }
+                      ref.invalidate(journeyProvider);
+                    },
+                  );
+                }
+                final list = result.journeys;
                 if (list.isEmpty) {
                   return const MessageView(
                     icon: Icons.route_rounded,
@@ -351,6 +370,84 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Did you mean?" — the candidate locations TfL returned when an endpoint was
+/// ambiguous. The user picks one; nothing is chosen for them.
+class _LocationChooser extends StatelessWidget {
+  const _LocationChooser({required this.options, required this.end, required this.onPick});
+  final List<PlaceOption> options;
+  final AmbiguousEnd end;
+  final ValueChanged<PlaceOption> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = end == AmbiguousEnd.origin ? 'start' : 'destination';
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: AppColors.blueTint, borderRadius: AppRadius.tile),
+              child: const Icon(Icons.alt_route_rounded, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${options.length} possible matches',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                  Text('Which $label did you mean?',
+                      style: const TextStyle(fontSize: 13, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ...options.asMap().entries.map((e) {
+          final o = e.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              onTap: () => onPick(o),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              child: Row(
+                children: [
+                  const Icon(Icons.place_rounded, color: AppColors.red, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(o.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textStrong)),
+                        if (o.modes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(o.modes.map((m) => m.label).join(' · '),
+                                style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Color(0xFFC6CDD5)),
+                ],
+              ),
+            ).animate().fadeIn(delay: (e.key * 40).ms).slideY(begin: 0.06),
+          );
+        }),
+      ],
     );
   }
 }

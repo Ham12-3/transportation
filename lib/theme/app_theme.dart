@@ -3,32 +3,31 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 
-/// Material 3 theme seeded from the primary blue (#1A6FEB), plus the
-/// Plus Jakarta Sans type ramp from the style guide. Whole app themes from here.
+/// Material 3 theme built on the TfL corporate blue and a Johnston-inspired
+/// type system: Hammersmith One (a face modelled on the Underground's Johnston
+/// lettering) for signage-style display, Cabin for readable UI text.
 class AppTheme {
   AppTheme._();
 
   static TextTheme _textTheme(TextTheme base, Color ink, Color body) {
-    final jakarta = GoogleFonts.plusJakartaSansTextTheme(base);
-    return jakarta.copyWith(
-      displaySmall: jakarta.displaySmall?.copyWith(
-          fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5),
-      headlineMedium: jakarta.headlineMedium
-          ?.copyWith(fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5),
-      headlineSmall: jakarta.headlineSmall
-          ?.copyWith(fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5),
-      titleLarge:
-          jakarta.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: ink),
-      titleMedium:
-          jakarta.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: ink),
-      titleSmall:
-          jakarta.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: body),
-      bodyLarge: jakarta.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: body),
-      bodyMedium: jakarta.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: body),
-      labelLarge:
-          jakarta.labelLarge?.copyWith(fontWeight: FontWeight.w800, color: ink),
-      labelSmall: jakarta.labelSmall
-          ?.copyWith(fontWeight: FontWeight.w600, color: AppColors.muted),
+    final cabin = GoogleFonts.cabinTextTheme(base);
+    // The signage face — used only where the Underground personality should show.
+    TextStyle display(double s, {double spacing = -0.3, Color? c}) =>
+        GoogleFonts.hammersmithOne(
+            fontSize: s, height: 1.05, letterSpacing: spacing, color: c ?? ink);
+
+    return cabin.copyWith(
+      displaySmall: display(30),
+      headlineMedium: display(26),
+      headlineSmall: display(22),
+      titleLarge: display(20, spacing: -0.2),
+      titleMedium: cabin.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: ink),
+      titleSmall: cabin.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: body),
+      bodyLarge: cabin.bodyLarge?.copyWith(fontWeight: FontWeight.w500, color: body),
+      bodyMedium: cabin.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: body),
+      labelLarge: cabin.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: ink),
+      labelSmall: cabin.labelSmall
+          ?.copyWith(fontWeight: FontWeight.w600, color: AppColors.muted, letterSpacing: 0.6),
     );
   }
 
@@ -41,7 +40,7 @@ class AppTheme {
       surface: AppColors.white,
       surfaceContainerLowest: AppColors.surface,
       onSurface: AppColors.textStrong,
-      secondary: AppColors.navy,
+      secondary: AppColors.roundelRed,
       error: AppColors.red,
     );
     return ThemeData(
@@ -73,7 +72,7 @@ class AppTheme {
       surface: AppColors.darkCard,
       surfaceContainerLowest: AppColors.darkBg,
       onSurface: AppColors.darkText,
-      secondary: AppColors.navy,
+      secondary: AppColors.roundelRed,
       error: AppColors.red,
     );
     return ThemeData(
@@ -92,17 +91,15 @@ class AppTheme {
   }
 }
 
-/// Convenient semantic text styles used across widgets (design-guide names).
+/// Semantic text styles used across widgets. Signage face for numbers, Cabin
+/// for the small utility labels.
 extension AppTextStyles on BuildContext {
-  TextStyle get bigNumber => const TextStyle(
-      fontWeight: FontWeight.w800, fontSize: 30, color: AppColors.ink, letterSpacing: -0.5);
-  TextStyle get sectionLabel => const TextStyle(
-      fontWeight: FontWeight.w800,
-      fontSize: 13,
-      color: AppColors.ink,
-      letterSpacing: 0.8);
-  TextStyle get rowTitle =>
-      const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textStrong);
+  TextStyle get bigNumber =>
+      GoogleFonts.hammersmithOne(fontSize: 30, color: AppColors.ink, letterSpacing: -0.5);
+  TextStyle get sectionLabel => GoogleFonts.cabin(
+      fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.muted, letterSpacing: 1.2);
+  TextStyle get rowTitle => GoogleFonts.cabin(
+      fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textStrong);
   TextStyle get caption =>
-      const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.muted);
+      GoogleFonts.cabin(fontWeight: FontWeight.w500, fontSize: 12, color: AppColors.muted);
 }

@@ -77,17 +77,11 @@ class _RouteDetailScreenState extends ConsumerState<RouteDetailScreen> {
                   )),
             ),
           ),
-          // Quiet/Regular/Fast tabs
+          // GO button → AR navigation. Floats at the bottom-right of the map,
+          // clear of the summary row below the seam.
           Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            left: 0,
-            right: 0,
-            child: Center(child: _tabs()),
-          ),
-          // GO button → AR navigation
-          Positioned(
-            right: 22,
-            top: 352 - 39,
+            right: 20,
+            top: 352 - 78 - 16,
             child: GoButton(onPressed: () => context.push('/ar', extra: j))
                 .animate()
                 .scale(delay: 200.ms, curve: Curves.easeOutBack),
@@ -139,26 +133,30 @@ class _RouteDetailScreenState extends ConsumerState<RouteDetailScreen> {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppShadows.float,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: AppColors.hairline),
+        boxShadow: AppShadows.card,
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           for (var i = 0; i < labels.length; i++)
-            GestureDetector(
-              onTap: () => setState(() => _tab = i),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-                decoration: BoxDecoration(
-                  color: _tab == i ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(9),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _tab = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _tab == i ? AppColors.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(labels[i],
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: _tab == i ? Colors.white : AppColors.muted)),
                 ),
-                child: Text(labels[i],
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: _tab == i ? Colors.white : AppColors.muted)),
               ),
             ),
         ],
@@ -170,24 +168,28 @@ class _RouteDetailScreenState extends ConsumerState<RouteDetailScreen> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        // Quiet / Regular / Fast — a full-width segmented control, now below
+        // the map so it never collides with a station pin.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 4),
+          child: _tabs(),
+        ),
         // summary bar
         Container(
-          color: const Color(0xFFEDF0F3),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
           child: Row(
             children: [
-              if (j.lineBadges.isNotEmpty) LineBadge(j.lineBadges.first),
+              if (j.lineBadges.isNotEmpty) LineBadge.line(j.lineBadges.first),
               const Spacer(),
-              if (j.fareLabel != null)
+              if (j.fareLabel != null) ...[
                 Text(j.fareLabel!,
                     style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text, fontSize: 13)),
-              const SizedBox(width: 12),
-              Row(children: [
-                const Icon(Icons.directions_walk_rounded, size: 16, color: AppColors.text),
-                const SizedBox(width: 3),
-                Text('${j.durationMinutes} min',
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text, fontSize: 13)),
-              ]),
+                const SizedBox(width: 14),
+              ],
+              const Icon(Icons.schedule_rounded, size: 16, color: AppColors.text),
+              const SizedBox(width: 4),
+              Text('${j.durationMinutes} min',
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textStrong, fontSize: 14)),
             ],
           ),
         ),
@@ -219,7 +221,11 @@ class _RouteDetailScreenState extends ConsumerState<RouteDetailScreen> {
             Icon(Icons.directions_walk_rounded,
                 size: 26, color: highlighted ? AppColors.primary : AppColors.text)
           else
-            IconBadge(leg.mode.icon),
+            Builder(builder: (_) {
+              final c = AppColors.lineColor(leg.lineName);
+              return IconBadge(leg.mode.icon,
+                  background: c.withValues(alpha: 0.14), color: c);
+            }),
           const SizedBox(width: 13),
           Expanded(
             child: Column(

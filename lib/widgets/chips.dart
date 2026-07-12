@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/transport_mode.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'roundel.dart';
 
-/// The coloured line/mode badge — "CMX1", "4", "381", "FREE", "in 5 min".
+/// A line badge — a tube-map style pill carrying a line name or route number,
+/// painted in that line's official colour.
 class LineBadge extends StatelessWidget {
   const LineBadge(
     this.text, {
@@ -18,6 +20,13 @@ class LineBadge extends StatelessWidget {
   final Color foreground;
   final bool pill;
 
+  /// Colour the badge by its real TfL line colour (Circle yellow, District
+  /// green, bus red…), picking a legible foreground automatically.
+  factory LineBadge.line(String text) {
+    final bg = AppColors.lineColor(text);
+    return LineBadge(text, background: bg, foreground: AppColors.onLine(bg));
+  }
+
   factory LineBadge.free() => const LineBadge('FREE',
       background: AppColors.greenTint, foreground: AppColors.green);
   factory LineBadge.status(String s) => LineBadge(s,
@@ -27,58 +36,54 @@ class LineBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: EdgeInsets.symmetric(horizontal: pill ? 12 : 7, vertical: pill ? 5 : 3),
+        padding: EdgeInsets.symmetric(horizontal: pill ? 12 : 8, vertical: pill ? 5 : 4),
         decoration: BoxDecoration(
           color: background,
           borderRadius: pill ? AppRadius.pill : AppRadius.badge,
         ),
         child: Text(text,
             style: TextStyle(
-                color: foreground, fontSize: pill ? 12 : 12, fontWeight: FontWeight.w800)),
+                color: foreground, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
       );
 }
 
-/// A mode filter tile in the Home grid (icon + label, selectable).
+/// A mode filter tile in the Home grid — icon + label, selectable. Selected
+/// tiles fill with the corporate blue and glow; the rest read as quiet cards.
 class ModeChip extends StatelessWidget {
   const ModeChip({
     super.key,
     required this.mode,
     required this.selected,
     this.onTap,
-    this.isAll = false,
   });
 
   final TransportMode mode;
   final bool selected;
   final VoidCallback? onTap;
-  final bool isAll;
 
   @override
   Widget build(BuildContext context) {
-    final Color bg = isAll
-        ? (selected ? AppColors.primary : AppColors.textStrong)
-        : (selected ? AppColors.primary : Colors.white);
-    final Color fg = (selected || isAll) ? Colors.white : AppColors.modeSlate;
+    final Color bg = selected ? AppColors.primary : Colors.white;
+    final Color fg = selected ? Colors.white : AppColors.modeSlate;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: AppRadius.tile,
+          border: selected ? null : Border.all(color: AppColors.hairline),
           boxShadow: selected ? AppShadows.blueGlow : AppShadows.card,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(mode.icon, size: 22, color: fg),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Text(mode.label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: fg)),
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: fg)),
           ],
         ),
       ),
@@ -86,19 +91,12 @@ class ModeChip extends StatelessWidget {
   }
 }
 
-/// Small circular avatar badge (e.g. the red "D" stop indicator).
+/// A small station marker built from the roundel — used in list rows in place
+/// of a generic coloured circle.
 class StopIndicator extends StatelessWidget {
-  const StopIndicator(this.letter, {super.key, this.color = AppColors.red});
+  const StopIndicator(this.letter, {super.key, this.color = AppColors.roundelRed});
   final String letter;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(
-        width: 26,
-        height: 26,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Text(letter,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-      );
+  Widget build(BuildContext context) => const Roundel(size: 26);
 }

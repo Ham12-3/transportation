@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/aircraft.dart';
 import '../models/arrival.dart';
-import '../models/journey.dart';
+import '../models/journey_plan.dart';
 import '../models/saved_item.dart';
 import '../models/stop_point.dart';
 import '../models/transport_mode.dart';
@@ -118,9 +118,9 @@ final searchProvider =
 
 // ─────────────────────────── Journey results ────────────────────
 
-final journeyProvider = FutureProvider<List<Journey>>((ref) async {
+final journeyProvider = FutureProvider<JourneyPlanResult>((ref) async {
   final q = ref.watch(searchProvider);
-  if (!q.isReady) return const [];
+  if (!q.isReady) return const JourneyPlanResult();
   final tfl = ref.read(tflServiceProvider);
 
   String from = q.from;

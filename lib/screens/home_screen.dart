@@ -11,6 +11,7 @@ import '../theme/app_spacing.dart';
 import '../widgets/chips.dart';
 import '../widgets/common.dart';
 import '../widgets/map_view.dart';
+import '../widgets/roundel.dart';
 import '../widgets/rows.dart';
 import '../widgets/state_views.dart';
 import 'destination_search_sheet.dart';
@@ -20,17 +21,15 @@ import 'stop_arrivals_sheet.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  // The mode chips shown in the Home grid (order matches the design).
+  // The travel modes a journey can be planned by (Air lives on its own tab;
+  // "Saved" and "All" were never modes and have been removed from this grid).
   static const _modes = [
-    TransportMode.saved,
-    TransportMode.bus,
-    TransportMode.cycle,
     TransportMode.tube,
+    TransportMode.bus,
     TransportMode.rail,
     TransportMode.tram,
     TransportMode.ferry,
-    TransportMode.air,
-    TransportMode.all,
+    TransportMode.cycle,
   ];
 
   @override
@@ -38,14 +37,15 @@ class HomeScreen extends ConsumerWidget {
     final query = ref.watch(searchProvider);
     final location = ref.watch(currentLocationProvider);
     final nearby = ref.watch(nearbyStopsProvider);
+    final top = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEAEDF1),
+      backgroundColor: AppColors.surfaceAlt,
       body: Stack(
         children: [
           // ── MAP ──
           SizedBox(
-            height: 360,
+            height: 380,
             width: double.infinity,
             child: location.when(
               data: (loc) => MapView(
@@ -59,15 +59,30 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              loading: () => Container(color: AppColors.surfaceAlt),
-              error: (_, _) => Container(color: AppColors.surfaceAlt),
+              loading: () => const _MapPlaceholder(label: 'Finding you…'),
+              error: (_, _) => const _MapPlaceholder(label: 'Map unavailable'),
             ),
           ),
 
+          // Brand lockup floating over the map
+          Positioned(
+            top: top + 12,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 16, 8),
+              decoration: BoxDecoration(
+                color: AppColors.navy,
+                borderRadius: AppRadius.pill,
+                boxShadow: AppShadows.float,
+              ),
+              child: const RoundelWordmark(text: 'Underground', size: 22),
+            ),
+          ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.4, curve: Curves.easeOut),
+
           // ── DRAGGABLE PANEL ──
           DraggableScrollableSheet(
-            initialChildSize: 0.62,
-            minChildSize: 0.62,
+            initialChildSize: 0.60,
+            minChildSize: 0.60,
             maxChildSize: 0.92,
             builder: (context, scroll) => Container(
               decoration: const BoxDecoration(
@@ -77,10 +92,13 @@ class HomeScreen extends ConsumerWidget {
               ),
               child: ListView(
                 controller: scroll,
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 32),
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
                 children: [
                   const Center(child: SheetGrabber()),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
+                  Text('Where to?',
+                      style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 14),
                   _SearchCard(
                     fromLabel: query.fromLabel,
                     toLabel: query.toLabel,
@@ -88,14 +106,15 @@ class HomeScreen extends ConsumerWidget {
                     onSwap: () => ref.read(searchProvider.notifier).swap(),
                     onEditTo: () => _openDestinationSearch(context, ref),
                   ),
-                  const SizedBox(height: 16),
-                  _ModeGrid(
+                  const SizedBox(height: 22),
+                  _ModeFilter(
                     modes: _modes,
                     selected: query.modes,
                     onTap: (m) => ref.read(searchProvider.notifier).toggleMode(m),
+                    onAll: () => ref.read(searchProvider.notifier).toggleMode(TransportMode.all),
                   ),
-                  const SizedBox(height: 18),
-                  const SectionLabel('Nearest Stops'),
+                  const SizedBox(height: 22),
+                  const SectionLabel('Nearest stops'),
                   _NearbyList(nearby: nearby),
                 ],
               ),
@@ -123,6 +142,26 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// Branded map fallback while the location or tiles resolve.
+class _MapPlaceholder extends StatelessWidget {
+  const _MapPlaceholder({required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) => Container(
+        color: AppColors.surfaceAlt,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const RoundelLoader(size: 38),
+            const SizedBox(height: 14),
+            Text(label,
+                style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
+}
+
 class _SearchCard extends StatelessWidget {
   const _SearchCard({
     required this.fromLabel,
@@ -139,65 +178,72 @@ class _SearchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
       children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: AppRadius.field,
-              boxShadow: AppShadows.card,
-            ),
-            child: Column(
-              children: [
-                _endpointRow(
-                  dot: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.18), spreadRadius: 4)],
-                    ),
-                  ),
-                  label: 'START',
-                  value: fromLabel,
-                  valueColor: AppColors.textStrong,
-                ),
-                const Divider(height: 1, color: AppColors.hairline),
-                _endpointRow(
-                  dot: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                        color: AppColors.red, borderRadius: BorderRadius.circular(2)),
-                  ),
-                  label: 'END',
-                  value: toLabel,
-                  valueColor: hasDestination ? AppColors.textStrong : const Color(0xFFB8C0C9),
-                  onTap: onEditTo,
-                ),
-              ],
-            ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.field,
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            children: [
+              _endpointRow(
+                dot: _dot(AppColors.primary, circle: true),
+                label: 'START',
+                value: fromLabel,
+                valueColor: AppColors.textStrong,
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 42),
+                child: Divider(height: 1, color: AppColors.hairline),
+              ),
+              _endpointRow(
+                dot: _dot(AppColors.roundelRed, circle: false),
+                label: 'DESTINATION',
+                value: toLabel,
+                valueColor: hasDestination ? AppColors.textStrong : const Color(0xFFAAB2BC),
+                onTap: onEditTo,
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: onSwap,
-          child: Container(
-            width: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: AppRadius.field,
-              boxShadow: AppShadows.card,
+        // Swap — a circular control straddling the divider, the familiar
+        // transit pattern (no more thin floating bar).
+        Positioned(
+          right: 14,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: Material(
+              color: AppColors.blueTint,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onSwap,
+                child: const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Icon(Icons.swap_vert_rounded, color: AppColors.primary, size: 22),
+                ),
+              ),
             ),
-            child: const Icon(Icons.swap_vert_rounded, color: AppColors.primary),
           ),
         ),
       ],
     );
   }
+
+  Widget _dot(Color color, {required bool circle}) => Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: color,
+          shape: circle ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: circle ? null : BorderRadius.circular(3),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.20), spreadRadius: 4)],
+        ),
+      );
 
   Widget _endpointRow({
     required Widget dot,
@@ -209,23 +255,27 @@ class _SearchCard extends StatelessWidget {
       InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          padding: const EdgeInsets.fromLTRB(15, 14, 56, 14),
           child: Row(
             children: [
-              dot,
-              const SizedBox(width: 12),
+              SizedBox(width: 16, child: Center(child: dot)),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(label,
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                            fontSize: 10.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8)),
+                    const SizedBox(height: 1),
                     Text(value,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700, color: valueColor)),
+                            fontSize: 16, fontWeight: FontWeight.w600, color: valueColor)),
                   ],
                 ),
               ),
@@ -235,29 +285,56 @@ class _SearchCard extends StatelessWidget {
       );
 }
 
-class _ModeGrid extends StatelessWidget {
-  const _ModeGrid({required this.modes, required this.selected, required this.onTap});
+/// A horizontal filter of real travel modes, with an "All" reset.
+class _ModeFilter extends StatelessWidget {
+  const _ModeFilter({
+    required this.modes,
+    required this.selected,
+    required this.onTap,
+    required this.onAll,
+  });
   final List<TransportMode> modes;
   final Set<TransportMode> selected;
   final ValueChanged<TransportMode> onTap;
+  final VoidCallback onAll;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 5,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 0.92,
+    final allActive = selected.contains(TransportMode.all);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final m in modes)
-          ModeChip(
-            mode: m,
-            isAll: m == TransportMode.all,
-            selected: selected.contains(m),
-            onTap: () => onTap(m),
+        Row(
+          children: [
+            const Expanded(child: SectionLabel('Get around by', padding: EdgeInsets.zero)),
+            GestureDetector(
+              onTap: allActive ? null : onAll,
+              child: Text('All modes',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: allActive ? AppColors.primary : AppColors.muted)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 76,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: modes.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => SizedBox(
+              width: 74,
+              child: ModeChip(
+                mode: modes[i],
+                selected: selected.contains(modes[i]),
+                onTap: () => onTap(modes[i]),
+              ),
+            ),
           ),
+        ),
       ],
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.06);
   }
@@ -295,7 +372,11 @@ class _NearbyList extends ConsumerWidget {
           child: Column(
             children: [
               for (var i = 0; i < stops.length && i < 6; i++) ...[
-                if (i > 0) const Divider(height: 1, color: AppColors.hairline),
+                if (i > 0)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 53),
+                    child: Divider(height: 1, color: AppColors.hairline),
+                  ),
                 StopRow(
                   stop: stops[i],
                   onTap: () => showModalBottomSheet(

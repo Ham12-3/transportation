@@ -55,7 +55,7 @@ class ArrivalRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
       child: Row(
         children: [
-          LineBadge(arrival.lineName, background: arrival.mode.chipColor),
+          LineBadge.line(arrival.lineName),
           const SizedBox(width: 12),
           Expanded(
             child: Text('to ${arrival.destinationName}',

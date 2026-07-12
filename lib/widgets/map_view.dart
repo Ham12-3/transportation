@@ -73,7 +73,7 @@ Marker userLocationMarker(LatLng at) => Marker(
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white, width: 4),
           boxShadow: const [
-            BoxShadow(color: Color(0x301A6FEB), blurRadius: 0, spreadRadius: 6),
+            BoxShadow(color: Color(0x330019A8), blurRadius: 0, spreadRadius: 6),
           ],
         ),
       ),

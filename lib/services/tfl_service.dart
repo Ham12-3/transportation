@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/arrival.dart';
 import '../models/journey.dart';
+import '../models/journey_plan.dart';
 import '../models/stop_point.dart';
 import '../models/transport_mode.dart';
 import 'api_config.dart';
@@ -30,7 +31,11 @@ class TflService {
 
   /// Journey Planner — bus + train + walk + cycle route options.
   /// [from] / [to] may be "lat,lon", a StopPoint id, or a free-text place.
-  Future<List<Journey>> planJourney({
+  ///
+  /// Returns ranked journeys, or — when TfL can't resolve an endpoint uniquely
+  /// (HTTP 300) — the list of candidate locations so the user can choose which
+  /// one they meant. Nothing is silently picked on their behalf.
+  Future<JourneyPlanResult> planJourney({
     required String from,
     required String to,
     List<TransportMode> modes = const [],
@@ -49,41 +54,45 @@ class TflService {
       q['time'] = _hhmm(when);
       q['timeIs'] = arriveBy ? 'arriving' : 'departing';
     }
-    var res = await _get('/Journey/JourneyResults/$from/to/$to', q);
-    var data = res.data;
+    final res = await _get('/Journey/JourneyResults/$from/to/$to', q);
+    final data = res.data;
+    if (data is! Map) return const JourneyPlanResult();
 
-    // If TfL couldn't uniquely resolve an endpoint it returns HTTP 300 with
-    // disambiguation candidates instead of journeys. Resolve each ambiguous end
-    // to its top-ranked candidate's coordinates and retry once.
-    if (data is Map && data['journeys'] == null) {
-      final resolvedTo = _topDisambiguation(data['toLocationDisambiguation']) ?? to;
-      final resolvedFrom = _topDisambiguation(data['fromLocationDisambiguation']) ?? from;
-      if (resolvedTo != to || resolvedFrom != from) {
-        res = await _get('/Journey/JourneyResults/$resolvedFrom/to/$resolvedTo', q);
-        data = res.data;
-      }
+    final journeys = data['journeys'] as List?;
+    if (journeys != null && journeys.isNotEmpty) {
+      return JourneyPlanResult(journeys: [
+        for (final j in journeys) Journey.fromJson(Map<String, dynamic>.from(j)),
+      ]);
     }
 
-    final journeys = (data is Map ? data['journeys'] as List? : null) ?? const [];
-    return [
-      for (final j in journeys) Journey.fromJson(Map<String, dynamic>.from(j)),
-    ];
+    // Ambiguous endpoint — surface the candidate locations (destination first,
+    // then origin) for the user to pick from.
+    final toOptions = _disambiguationOptions(data['toLocationDisambiguation']);
+    if (toOptions.isNotEmpty) {
+      return JourneyPlanResult(options: toOptions, ambiguousEnd: AmbiguousEnd.destination);
+    }
+    final fromOptions = _disambiguationOptions(data['fromLocationDisambiguation']);
+    if (fromOptions.isNotEmpty) {
+      return JourneyPlanResult(options: fromOptions, ambiguousEnd: AmbiguousEnd.origin);
+    }
+
+    return const JourneyPlanResult(); // genuinely no routes
   }
 
-  /// Extracts the best candidate's "lat,lon" from a TfL disambiguation block,
-  /// preferring higher match quality. Returns null if none is usable.
-  String? _topDisambiguation(dynamic disambiguation) {
-    if (disambiguation is! Map) return null;
+  /// Parses a TfL disambiguation block into usable candidate locations,
+  /// ranked as TfL returned them and keeping only ones with coordinates.
+  List<PlaceOption> _disambiguationOptions(dynamic disambiguation) {
+    if (disambiguation is! Map) return const [];
     final options = disambiguation['disambiguationOptions'] as List?;
-    if (options == null || options.isEmpty) return null;
-    // Options come back ranked; take the first with coordinates.
+    if (options == null || options.isEmpty) return const [];
+    final out = <PlaceOption>[];
     for (final o in options) {
-      final place = (o is Map) ? o['place'] : null;
-      final lat = (place is Map ? place['lat'] as num? : null)?.toDouble();
-      final lon = (place is Map ? place['lon'] as num? : null)?.toDouble();
-      if (lat != null && lon != null) return '$lat,$lon';
+      if (o is Map) {
+        final p = PlaceOption.fromTflOption(o);
+        if (p.hasCoord) out.add(p);
+      }
     }
-    return null;
+    return out;
   }
 
   /// StopPoints within [radius] metres of a coordinate, nearest first.

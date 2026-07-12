@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/arrival.dart';
@@ -9,7 +10,9 @@ import '../providers/providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/map_view.dart';
+import '../widgets/roundel.dart';
 import '../widgets/state_views.dart';
+import 'stop_arrivals_sheet.dart';
 
 /// S5 — Nearby · Stops & Lines. Radius map with a navy bottom sheet.
 class NearbyScreen extends ConsumerWidget {
@@ -115,25 +118,29 @@ class _NearbySheet extends ConsumerWidget {
         children: [
           Center(child: SheetGrabber(color: Colors.white.withValues(alpha: 0.35))),
           const SizedBox(height: 14),
-          const Row(children: [
-            Icon(Icons.near_me_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('Nearby', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          Row(children: [
+            const Roundel(size: 26, barColor: Colors.white),
+            const SizedBox(width: 11),
+            Text('Nearby',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white)),
           ]),
           const SizedBox(height: 16),
           nearby.when(
-            loading: () => const Padding(padding: EdgeInsets.all(30), child: LoadingView()),
+            loading: () => const Padding(
+                padding: EdgeInsets.all(30),
+                child: LoadingView(label: 'Finding stops around you…', onDark: true)),
             error: (e, _) => Padding(
               padding: const EdgeInsets.all(16),
-              child: ErrorView(onRetry: () => ref.invalidate(nearbyStopsProvider)),
+              child: ErrorView(onDark: true, onRetry: () => ref.invalidate(nearbyStopsProvider)),
             ),
             data: (stops) => stops.isEmpty
                 ? const Padding(
                     padding: EdgeInsets.all(20),
                     child: MessageView(
+                        onDark: true,
                         icon: Icons.location_off_rounded,
                         title: 'No stops nearby',
-                        message: 'Try moving the map.'),
+                        message: 'Try moving the map or widening your search.'),
                   )
                 : Column(
                     children: [for (final s in stops.take(8)) _StationCard(stop: s)],
@@ -155,43 +162,92 @@ class _StationCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.card),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.double_arrow_rounded, color: AppColors.primary, size: 20),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(stop.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textStrong)),
-              ),
-              Text.rich(TextSpan(children: [
-                const TextSpan(
-                    text: 'walk ',
-                    style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600, fontSize: 13)),
-                TextSpan(
-                    text: '${stop.walkMinutes} min',
-                    style: const TextStyle(color: AppColors.textStrong, fontWeight: FontWeight.w800, fontSize: 15)),
-              ])),
-            ],
-          ),
-          const SizedBox(height: 6),
-          arrivals.when(
-            loading: () => const _LineRowSkeleton(),
-            error: (_, _) => const SizedBox.shrink(),
-            data: (list) => Column(
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openArrivals(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final a in _byLine(list).take(3)) _LineRow(arrival: a),
+                Row(
+                  children: [
+                    const Roundel(size: 22),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(stop.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textStrong)),
+                    ),
+                    Text.rich(TextSpan(children: [
+                      const TextSpan(
+                          text: 'walk ',
+                          style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600, fontSize: 13)),
+                      TextSpan(
+                          text: '${stop.walkMinutes} min',
+                          style: const TextStyle(
+                              color: AppColors.textStrong, fontWeight: FontWeight.w800, fontSize: 15)),
+                    ])),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                arrivals.when(
+                  loading: () => const _LineRowSkeleton(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (list) => Column(
+                    children: [
+                      for (final a in _byLine(list).take(3)) _LineRow(arrival: a),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Actions — the missing "get around" step: see all arrivals,
+                // or plan a route straight to this stop.
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CardAction(
+                        icon: Icons.access_time_rounded,
+                        label: 'Arrivals',
+                        onTap: () => _openArrivals(context),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CardAction(
+                        icon: Icons.directions_rounded,
+                        label: 'Directions',
+                        filled: true,
+                        onTap: () => _directions(context, ref),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  void _openArrivals(BuildContext context) => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => StopArrivalsSheet(stop: stop),
+      );
+
+  void _directions(BuildContext context, WidgetRef ref) {
+    // TfL Journey Planner resolves raw coordinates directly (no HTTP 300
+    // disambiguation), so plan a route from current location to this stop.
+    final coord = '${stop.position.latitude},${stop.position.longitude}';
+    ref.read(searchProvider.notifier).setTo(coord, label: stop.name);
+    context.push('/results');
   }
 
   // One representative arrival per line for a compact "Lines" view.
@@ -205,29 +261,72 @@ class _LineRow extends StatelessWidget {
   const _LineRow({required this.arrival});
   final Arrival arrival;
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-              child: const Icon(Icons.directions_transit_rounded, color: Colors.white, size: 13),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(arrival.lineName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
-            ),
-            Text(arrival.etaLabel,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.green)),
-          ],
+  Widget build(BuildContext context) {
+    final c = AppColors.lineColor(arrival.lineName);
+    final imminent = arrival.minutes <= 2;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(arrival.lineName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
+          ),
+          Text(arrival.etaLabel,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: imminent ? AppColors.green : AppColors.textStrong)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact action button used on the nearby station cards.
+class _CardAction extends StatelessWidget {
+  const _CardAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = filled ? Colors.white : AppColors.primary;
+    return Material(
+      color: filled ? AppColors.primary : AppColors.blueTint,
+      borderRadius: AppRadius.badge,
+      child: InkWell(
+        borderRadius: AppRadius.badge,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 17, color: fg),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 13)),
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _LineRowSkeleton extends StatelessWidget {

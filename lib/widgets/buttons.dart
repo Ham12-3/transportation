@@ -103,7 +103,7 @@ class GoButton extends StatelessWidget {
             border: Border.all(color: Colors.white, width: 4),
             boxShadow: const [
               BoxShadow(
-                  color: Color(0x801A6FEB), blurRadius: 26, offset: Offset(0, 10)),
+                  color: Color(0x660019A8), blurRadius: 26, offset: Offset(0, 10)),
             ],
           ),
           alignment: Alignment.center,

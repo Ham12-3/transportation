@@ -6,7 +6,7 @@ import '../models/stop_point.dart';
 import '../providers/providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import '../widgets/common.dart';
+import '../widgets/roundel.dart';
 import '../widgets/rows.dart';
 import '../widgets/state_views.dart';
 
@@ -33,7 +33,7 @@ class StopArrivalsSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 8),
             child: Row(
               children: [
-                const IconBadge(Icons.directions_transit_rounded),
+                const Roundel(size: 34),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
